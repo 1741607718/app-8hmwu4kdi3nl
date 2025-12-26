@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, AlertCircle } from 'lucide-react';
+import { Shield, AlertCircle, Key } from 'lucide-react';
+import { initTestAccounts } from '@/db/initAccounts';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -15,12 +16,33 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [initLoading, setInitLoading] = useState(false);
+  const [initSuccess, setInitSuccess] = useState(false);
 
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as { from?: string })?.from || '/';
+
+  const handleInitTestAccounts = async () => {
+    setInitLoading(true);
+    setError('');
+    try {
+      const result = await initTestAccounts();
+      if (result.success) {
+        setInitSuccess(true);
+        setError('');
+        alert('测试账号初始化成功！\n\n管理员: admin / 123456\n普通用户: user / 123456\n\n请使用上述账号登录');
+      } else {
+        setError(result.error || '初始化失败');
+      }
+    } catch (err) {
+      setError('初始化失败，请重试');
+    } finally {
+      setInitLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,10 +145,31 @@ export default function LoginPage() {
                   {loading ? '登录中...' : '登录'}
                 </Button>
 
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">或</span>
+                  </div>
+                </div>
+
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={handleInitTestAccounts}
+                  disabled={initLoading || initSuccess}
+                >
+                  <Key className="mr-2 h-4 w-4" />
+                  {initLoading ? '初始化中...' : initSuccess ? '测试账号已创建' : '创建测试账号'}
+                </Button>
+
                 <div className="text-sm text-muted-foreground text-center mt-4">
                   <p>测试账号：</p>
                   <p>管理员: admin / 123456</p>
                   <p>普通用户: user / 123456</p>
+                  <p className="text-xs mt-2 text-warning">首次使用请先点击"创建测试账号"</p>
                 </div>
               </form>
             </TabsContent>
