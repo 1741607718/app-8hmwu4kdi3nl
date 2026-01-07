@@ -1,0 +1,54 @@
+import axios from 'axios';
+
+async function testApiData() {
+  // 从环境变量获取API基础URL，如果未设置则使用默认值
+  const baseUrl = process.env.API_BASE_URL || 'http://localhost:3003';
+  
+  console.log('开始测试API数据获取...\n');
+  console.log(`API基础URL: ${baseUrl}\n`);
+  
+  try {
+    // 测试车辆数据API
+    console.log('1. 测试车辆数据API...');
+    const vehicleResponse = await axios.get(`${baseUrl}/api/vehicle?startDate=2025-12-01&endDate=2025-12-31`);
+    console.log('✅ 车辆API调用成功');
+    console.log(`📊 返回数据条数: ${vehicleResponse.data.length}`);
+    if (vehicleResponse.data.length > 0) {
+      console.log('📋 车辆数据示例:', vehicleResponse.data[0]);
+    }
+  } catch (error) {
+    console.log('❌ 车辆API调用失败:', (error as Error).message);
+  }
+  
+  console.log('');
+  
+  try {
+    // 测试消防设备数据API
+    console.log('2. 测试消防设备数据API...');
+    const fireSafetyResponse = await axios.get(`${baseUrl}/api/fire-safety?startDate=2025-12-01&endDate=2025-12-31`);
+    console.log('✅ 消防设备API调用成功');
+    console.log(`📊 返回数据条数: ${fireSafetyResponse.data.length}`);
+    if (fireSafetyResponse.data.length > 0) {
+      console.log('📋 消防设备数据示例:', fireSafetyResponse.data[0]);
+    }
+  } catch (error) {
+    console.log('❌ 消防设备API调用失败:', (error as Error).message);
+  }
+  
+  console.log('');
+  
+  try {
+    // 测试健康检查端点
+    console.log('3. 测试健康检查端点...');
+    const healthResponse = await axios.get(`${baseUrl}/health`);
+    console.log('✅ 健康检查调用成功');
+    console.log('📋 健康检查响应:', healthResponse.data);
+  } catch (error) {
+    console.log('❌ 健康检查调用失败:', (error as Error).message);
+  }
+  
+  console.log('\n测试完成!');
+}
+
+// 运行测试
+testApiData().catch(console.error);
