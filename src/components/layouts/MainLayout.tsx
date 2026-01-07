@@ -43,22 +43,22 @@ const navItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: '车辆管理',
+    title: '车辆数据',
     href: '/vehicles',
     icon: Car,
   },
   {
-    title: '人员管理',
+    title: '人员数据',
     href: '/personnel',
     icon: Users,
   },
   {
-    title: '消防安全',
+    title: '消防数据',
     href: '/fire-safety',
     icon: Flame,
   },
   {
-    title: '安保监控',
+    title: '安全数据',
     href: '/security',
     icon: Shield,
   },
@@ -68,7 +68,7 @@ const navItems: NavItem[] = [
     icon: Building2,
   },
   {
-    title: '权限管理',
+    title: '权限数据',
     href: '/admin/permissions',
     icon: Settings,
     adminOnly: true,
@@ -154,7 +154,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {profile?.username || '用户'}
+                  {profile?.name || profile?.username || '用户'}
                 </p>
                 <p className="text-xs text-sidebar-foreground/60">
                   {profile?.role === 'admin' ? '管理员' : '普通用户'}
@@ -217,7 +217,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{profile?.username || '用户'}</p>
+                    <p className="text-sm font-medium">{profile?.name || profile?.username || '用户'}</p>
                     <p className="text-xs text-muted-foreground">
                       {profile?.role === 'admin' ? '管理员' : '普通用户'}
                     </p>

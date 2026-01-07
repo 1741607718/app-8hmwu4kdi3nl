@@ -8,7 +8,6 @@ import path from "path";
 export default defineConfig({
   plugins: [
     react(),
-    miaodaDevPlugin(),
     svgr({
       svgrOptions: {
         icon: true,
@@ -22,4 +21,41 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    port: 3002,  // 修改为3002端口
+    host: '0.0.0.0',  // 允许外部访问
+    proxy: {
+      '/api': {
+        target: 'http://0.0.0.0:3003',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('Vite Proxy Error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Vite Proxy -> Sending Request to Target:', req.method, req.url, 'Headers:', req.headers);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Vite Proxy <- Received Response from Target:', proxyRes.statusCode, req.url, 'Headers:', proxyRes.headers);
+          });
+        },
+      }
+    }
+  },
+  preview: {
+    port: 3002,
+    host: '0.0.0.0',
+    proxy: {
+      '/api': {
+        target: 'http://0.0.0.0:3003',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
+  // 明确指定环境变量前缀以确保正确加载
+  envPrefix: ['VITE_', 'NODE_'],
+  // 指定要加载的环境文件
+  envDir: '.',  // 在项目根目录查找环境文件
 });

@@ -1,93 +1,70 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Car, Users, Flame, Shield, Building2, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
-import { getVehicleStats, getFireEquipmentStats, getPersonnelStats, getSecurityStats, getDormitoryStats } from '@/db/api';
-import { generateMockVehicleData, generateMockFireEquipmentData } from '@/services/externalApi';
-import { supabase } from '@/db/supabase';
+import { Car, Users, Flame, Shield, Building2, TrendingUp, TrendingDown, AlertTriangle, Footprints, UserCheck } from 'lucide-react';
+import {
+  fetchVehicleStats,
+  fetchVisitorStats,
+  fetchVisitorEntryStats,
+  fetchHumanTrafficStats,
+  fetchDormitoryStats
+} from '@/services/externalApi';
 import type { StatCardData } from '@/types/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface DashboardStats {
   vehicles: {
-    total: number;
-    today: number;
-    change: number;
+    passageCount: number;
+    speedingCount: number;
   };
   personnel: {
-    total: number;
-    visitors: number;
-    change: number;
-  };
-  fireEquipment: {
-    total: number;
-    normal: number;
-    abnormal: number;
-  };
-  security: {
-    monitorsOnline: number;
-    monitorsTotal: number;
-    incidents: number;
+    visitorCount: number;
+    visitorEntryCount: number;
+    humanTrafficTotal: number;
+    libraryTraffic: number;
+    skybridgeTraffic: number;
   };
   dormitory: {
     totalResidents: number;
-    checkedIn: number;
-    checkedOut: number;
+    lateReturnCount: number;
+    noReturnCount: number;
   };
 }
 
-function StatCard({ data }: { data: StatCardData }) {
-  const getIcon = () => {
-    switch (data.icon) {
-      case 'car':
-        return <Car className="h-5 w-5" />;
-      case 'users':
-        return <Users className="h-5 w-5" />;
-      case 'flame':
-        return <Flame className="h-5 w-5" />;
-      case 'shield':
-        return <Shield className="h-5 w-5" />;
-      case 'building':
-        return <Building2 className="h-5 w-5" />;
-      default:
-        return <AlertTriangle className="h-5 w-5" />;
-    }
-  };
-
-  const getChangeIcon = () => {
-    if (!data.change) return null;
-    if (data.changeType === 'increase') {
-      return <TrendingUp className="h-4 w-4 text-chart-4" />;
-    }
-    if (data.changeType === 'decrease') {
-      return <TrendingDown className="h-4 w-4 text-destructive" />;
-    }
-    return null;
-  };
-
+// 组合统计卡片组件
+function CombinedStatCard({ 
+  title, 
+  icon, 
+  dataItems, 
+  onClick 
+}: { 
+  title: string; 
+  icon: React.ReactNode;
+  dataItems: { label: string; value: number | string; unit: string; color?: string }[];
+  onClick?: () => void;
+}) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {data.title}
-        </CardTitle>
-        <div className="p-2 bg-primary/10 rounded-lg text-primary">
-          {getIcon()}
-        </div>
+    <Card 
+      className={cn("transition-shadow", onClick ? "cursor-pointer hover:shadow-md" : "")}
+      onClick={onClick}
+    >
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
       </CardHeader>
       <CardContent>
-        <div className="flex items-baseline gap-2">
-          <div className="text-2xl font-bold">
-            {data.value}
-            {data.unit && <span className="text-sm font-normal text-muted-foreground ml-1">{data.unit}</span>}
-          </div>
-          {data.change !== undefined && (
-            <div className="flex items-center gap-1 text-sm">
-              {getChangeIcon()}
-              <span className={data.changeType === 'increase' ? 'text-chart-4' : 'text-destructive'}>
-                {data.change > 0 ? '+' : ''}{data.change}%
-              </span>
+        <div className="space-y-1">
+          {dataItems.map((item, index) => (
+            <div key={index} className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">{item.label}</div>
+              <div className="flex items-baseline gap-1">
+                <span className={`text-lg font-semibold ${item.color || ''}`}>{item.value}</span>
+                <span className="text-xs text-muted-foreground">{item.unit}</span>
+              </div>
             </div>
-          )}
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -95,6 +72,7 @@ function StatCard({ data }: { data: StatCardData }) {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -102,129 +80,71 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
+  // 辅助函数：获取精确的查询时间字符串
+  const getPreciseDateString = (date: Date, isEndDate: boolean = false) => {
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    if (isToday && isEndDate) {
+      // 如果是结束日期且是今天，使用当前时间
+      return format(now, 'yyyy-MM-dd HH:mm:ss');
+    } else if (isEndDate) {
+      // 如果是结束日期但不是今天，使用当天的最后一秒
+      return format(date, 'yyyy-MM-dd 23:59:59');
+    } else {
+      // 如果是开始日期，使用当天的第一秒
+      return format(date, 'yyyy-MM-dd 00:00:00');
+    }
+  };
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
 
-      // 检查数据库中是否有数据
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const today = new Date();
+      const startDate = getPreciseDateString(today);
+      const endDate = getPreciseDateString(today, true);
 
-      // 获取车辆数据
-      const vehicleStats = await getVehicleStats({
-        startDate: yesterday,
-        endDate: today,
+      // 并行获取所有统计数据
+      const [
+        vehicleStats,
+        speedingStats,
+        visitorStats,
+        visitorEntryStats,
+        humanTrafficStats,
+        dormitoryStats
+      ] = await Promise.all([
+        fetchVehicleStats({ startDate, endDate }),
+        fetchVehicleStats({ startDate, endDate, speedingOnly: true }),
+        fetchVisitorStats({ startDate, endDate, personnelMode: true }),
+        fetchVisitorEntryStats({ startDate, endDate }),
+        fetchHumanTrafficStats({ startDate, endDate }),
+        fetchDormitoryStats({ startDate, endDate })
+      ]);
+
+      setStats({
+        vehicles: {
+          passageCount: vehicleStats.success && vehicleStats.data ? vehicleStats.data.total : 0,
+          speedingCount: speedingStats.success && speedingStats.data ? speedingStats.data.total : 0,
+        },
+        personnel: {
+          visitorCount: visitorStats.success && visitorStats.data ? visitorStats.data.total : 0,
+          visitorEntryCount: visitorEntryStats.success && visitorEntryStats.data ? visitorEntryStats.data.total : 0,
+          humanTrafficTotal: humanTrafficStats.success && humanTrafficStats.data ? humanTrafficStats.data.total : 0,
+          libraryTraffic: humanTrafficStats.success && humanTrafficStats.data ? humanTrafficStats.data.library : 0,
+          skybridgeTraffic: humanTrafficStats.success && humanTrafficStats.data ? humanTrafficStats.data.skybridge : 0,
+        },
+        dormitory: {
+          totalResidents: dormitoryStats.success && dormitoryStats.data ? dormitoryStats.data.total : 0,
+          lateReturnCount: dormitoryStats.success && dormitoryStats.data ? dormitoryStats.data.wg_count : 0,
+          noReturnCount: dormitoryStats.success && dormitoryStats.data ? dormitoryStats.data.bg_count : 0,
+        },
       });
 
-      // 如果数据库为空，生成模拟数据并插入
-      if (vehicleStats.total === 0) {
-        await initializeMockData();
-        // 重新获取数据
-        const newVehicleStats = await getVehicleStats({
-          startDate: yesterday,
-          endDate: today,
-        });
-        const fireStats = await getFireEquipmentStats();
-        
-        setStats({
-          vehicles: {
-            total: newVehicleStats.total,
-            today: newVehicleStats.byDate[today] || 0,
-            change: 5.2,
-          },
-          personnel: {
-            total: 15234,
-            visitors: 342,
-            change: 2.1,
-          },
-          fireEquipment: {
-            total: fireStats.total,
-            normal: fireStats.normal,
-            abnormal: fireStats.abnormal,
-          },
-          security: {
-            monitorsOnline: 156,
-            monitorsTotal: 160,
-            incidents: 3,
-          },
-          dormitory: {
-            totalResidents: 8500,
-            checkedIn: 8234,
-            checkedOut: 266,
-          },
-        });
-      } else {
-        const fireStats = await getFireEquipmentStats();
-        
-        setStats({
-          vehicles: {
-            total: vehicleStats.total,
-            today: vehicleStats.byDate[today] || 0,
-            change: 5.2,
-          },
-          personnel: {
-            total: 15234,
-            visitors: 342,
-            change: 2.1,
-          },
-          fireEquipment: {
-            total: fireStats.total,
-            normal: fireStats.normal,
-            abnormal: fireStats.abnormal,
-          },
-          security: {
-            monitorsOnline: 156,
-            monitorsTotal: 160,
-            incidents: 3,
-          },
-          dormitory: {
-            totalResidents: 8500,
-            checkedIn: 8234,
-            checkedOut: 266,
-          },
-        });
-      }
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const initializeMockData = async () => {
-    try {
-      // 生成模拟车辆数据
-      const mockVehicles = generateMockVehicleData(7);
-      const vehicleInserts = mockVehicles.map(v => ({
-        plate_number: v.cph,
-        recognition_code: v.qcysdm || null,
-        recognition_name: v.qcysmc || null,
-        station_code: v.sbtdbm || null,
-        station_name: v.sbtdmc || null,
-        pass_time: v.zpsj,
-        data_source: 'mock',
-        raw_data: v,
-      }));
-
-      await supabase.from('vehicle_data').insert(vehicleInserts);
-
-      // 生成模拟消防设备数据
-      const mockFireEquipment = generateMockFireEquipmentData(7);
-      const fireInserts = mockFireEquipment.map(f => ({
-        equipment_number: f.bh,
-        check_date: f.dqrq,
-        status: f.syjf || null,
-        location_code: f.dxwb || null,
-        location_name: f.bm || null,
-        data_source: 'mock',
-        raw_data: f,
-      }));
-
-      await supabase.from('fire_equipment_data').insert(fireInserts);
-
-      console.log('模拟数据初始化完成');
-    } catch (error) {
-      console.error('初始化模拟数据失败:', error);
     }
   };
 
@@ -235,8 +155,8 @@ export default function DashboardPage() {
           <Skeleton className="h-8 w-48 mb-2 bg-muted" />
           <Skeleton className="h-4 w-96 bg-muted" />
         </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-          {[1, 2, 3, 4, 5, 6].map(i => (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-2">
+          {[1, 2, 3, 4].map(i => (
             <Skeleton key={i} className="h-32 bg-muted" />
           ))}
         </div>
@@ -252,46 +172,6 @@ export default function DashboardPage() {
     );
   }
 
-  const statCards: StatCardData[] = [
-    {
-      title: '今日车辆通行',
-      value: stats.vehicles.today,
-      unit: '辆',
-      change: stats.vehicles.change,
-      changeType: 'increase',
-      icon: 'car',
-    },
-    {
-      title: '在校人数',
-      value: stats.personnel.total.toLocaleString(),
-      unit: '人',
-      change: stats.personnel.change,
-      changeType: 'increase',
-      icon: 'users',
-    },
-    {
-      title: '访客人数',
-      value: stats.personnel.visitors,
-      unit: '人',
-      icon: 'users',
-    },
-    {
-      title: '消防设备正常',
-      value: `${stats.fireEquipment.normal}/${stats.fireEquipment.total}`,
-      icon: 'flame',
-    },
-    {
-      title: '监控在线率',
-      value: `${((stats.security.monitorsOnline / stats.security.monitorsTotal) * 100).toFixed(1)}%`,
-      icon: 'shield',
-    },
-    {
-      title: '宿舍入住率',
-      value: `${((stats.dormitory.checkedIn / stats.dormitory.totalResidents) * 100).toFixed(1)}%`,
-      icon: 'building',
-    },
-  ];
-
   return (
     <div className="p-4 xl:p-6 space-y-6">
       {/* 页面标题 */}
@@ -300,34 +180,102 @@ export default function DashboardPage() {
         <p className="text-muted-foreground mt-1">校园安全数据实时监控</p>
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        {statCards.map((card, index) => (
-          <StatCard key={index} data={card} />
-        ))}
+      {/* 统计卡片 - 按要求组合显示 */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-2">
+        {/* 当日车流量/超速车辆 */}
+        <CombinedStatCard 
+          title="车辆通行数据" 
+          icon={<Car className="h-4 w-4 text-muted-foreground" />}
+          onClick={() => navigate('/vehicles')}
+          dataItems={[
+            { label: '当日车流量', value: stats.vehicles.passageCount.toLocaleString(), unit: '辆', color: 'text-primary' },
+            { label: '超速车辆', value: stats.vehicles.speedingCount.toLocaleString(), unit: '辆', color: 'text-yellow-500' }
+          ]}
+        />
+        
+        {/* 访客预约数/访客入校人数 */}
+        <CombinedStatCard 
+          title="访客数据" 
+          icon={<Users className="h-4 w-4 text-muted-foreground" />}
+          onClick={() => navigate('/personnel')}
+          dataItems={[
+            { label: '访客预约数', value: stats.personnel.visitorCount.toLocaleString(), unit: '人', color: 'text-blue-500' },
+            { label: '访客入校人数', value: stats.personnel.visitorEntryCount.toLocaleString(), unit: '人', color: 'text-green-500' }
+          ]}
+        />
+        
+        {/* 天桥人流量/图书馆人流量 */}
+        <CombinedStatCard 
+          title="人流量数据" 
+          icon={<Footprints className="h-4 w-4 text-muted-foreground" />}
+          onClick={() => navigate('/personnel')}
+          dataItems={[
+            { label: '天桥人流量', value: stats.personnel.skybridgeTraffic.toLocaleString(), unit: '人次', color: 'text-purple-500' },
+            { label: '图书馆人流量', value: stats.personnel.libraryTraffic.toLocaleString(), unit: '人次', color: 'text-indigo-500' }
+          ]}
+        />
+        
+        {/* 晚归人数/未归人数 */}
+        <CombinedStatCard 
+          title="宿舍数据" 
+          icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
+          onClick={() => navigate('/dormitory')}
+          dataItems={[
+            { label: '晚归人数', value: stats.dormitory.lateReturnCount.toLocaleString(), unit: '人', color: 'text-orange-500' },
+            { label: '未归人数', value: stats.dormitory.noReturnCount.toLocaleString(), unit: '人', color: 'text-red-500' }
+          ]}
+        />
       </div>
 
       {/* 快速访问 */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = '/vehicles'}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/vehicles')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Car className="h-5 w-5 text-primary" />
-              车辆管理
+              车辆数据
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              查看车辆通行记录、车流量统计等详细信息
+              查看车辆通行记录、车流量统计及超速监控
             </p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = '/fire-safety'}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/personnel')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              人员数据
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              查看访客预约、入校记录及人流量统计
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/dormitory')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              宿管数据
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              查看宿舍住宿人数及楼栋分布情况
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/fire-safety')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Flame className="h-5 w-5 text-primary" />
-              消防安全
+              消防数据
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -337,16 +285,30 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = '/security'}>
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/security')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              安保监控
+              安全数据
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
               查看监控状态、案事件统计等信息
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" />
+              权限数据
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              权限管理功能开发中
             </p>
           </CardContent>
         </Card>

@@ -1,5 +1,11 @@
--- 创建用户角色枚举
-CREATE TYPE public.user_role AS ENUM ('user', 'admin');
+-- 创建用户角色枚举（如果不存在）
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE public.user_role AS ENUM ('user', 'admin');
+    END IF;
+END
+$$;
 
 -- 创建用户配置表
 CREATE TABLE public.profiles (
@@ -69,7 +75,7 @@ CREATE TABLE public.security_stats (
 CREATE TABLE public.dormitory_stats (
   id BIGSERIAL PRIMARY KEY,
   stat_date DATE NOT NULL,
-  total_residents INTEGER DEFAULT 0,
+  total_count INTEGER DEFAULT 0,
   checked_in INTEGER DEFAULT 0,
   checked_out INTEGER DEFAULT 0,
   data_type TEXT,
@@ -97,8 +103,15 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO user_count FROM profiles;
   
-  -- 从email中提取用户名 (去掉@miaoda.com)
-  extracted_username := REPLACE(NEW.email, '@miaoda.com', '');
+  -- 从email中提取用户名 (支持多种邮箱后缀)
+  IF NEW.email LIKE '%@miaoda.com' THEN
+    extracted_username := REPLACE(NEW.email, '@miaoda.com', '');
+  ELSIF NEW.email LIKE '%@cas.wzbc.edu.cn' THEN
+    extracted_username := REPLACE(NEW.email, '@cas.wzbc.edu.cn', '');
+  ELSE
+    -- 默认情况下，去掉第一个@符号后的部分
+    extracted_username := SPLIT_PART(NEW.email, '@', 1);
+  END IF;
   
   -- 插入用户配置
   INSERT INTO public.profiles (id, username, email, role)
@@ -124,7 +137,7 @@ CREATE OR REPLACE FUNCTION is_admin(uid uuid)
 RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
   SELECT EXISTS (
     SELECT 1 FROM profiles p
-    WHERE p.id = uid AND p.role = 'admin'::user_role
+    WHERE p.id = uid AND p.role = 'admin'::public.user_role
   );
 $$;
 

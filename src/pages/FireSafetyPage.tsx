@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarIcon, Download, Flame, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, Download, Flame, AlertTriangle, CheckCircle2, Shield, BarChart2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -16,6 +16,29 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function FireSafetyPage() {
   const { profile } = useAuth();
+  
+  // 权限检查函数
+  const canViewDetails = (module: 'vehicle' | 'fireSafety' | 'personnel' | 'security' | 'dormitory') => {
+    if (!profile || !profile.permissions) {
+      return false;
+    }
+    
+    // 根据模块检查对应的权限
+    switch (module) {
+      case 'vehicle':
+        return profile.permissions.canViewVehicleDetails || profile.role === 'admin';
+      case 'fireSafety':
+        return profile.permissions.canViewFireSafetyDetails || profile.role === 'admin';
+      case 'personnel':
+        return profile.permissions.canViewPersonnelDetails || profile.role === 'admin';
+      case 'security':
+        return profile.permissions.canViewSecurityDetails || profile.role === 'admin';
+      case 'dormitory':
+        return profile.permissions.canViewDormitoryDetails || profile.role === 'admin';
+      default:
+        return false;
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [equipment, setEquipment] = useState<FireEquipmentData[]>([]);
   const [stats, setStats] = useState({ total: 0, normal: 0, abnormal: 0 });
@@ -58,8 +81,9 @@ export default function FireSafetyPage() {
   };
 
   const handleExport = () => {
-    if (!profile?.permissions?.canExport && profile?.role !== 'admin') {
-      alert('您没有导出权限');
+    // 检查详情导出权限
+    if (!canViewDetails('fireSafety')) {
+      alert('您没有权限导出详细数据');
       return;
     }
 
@@ -88,6 +112,9 @@ export default function FireSafetyPage() {
     { name: '异常', value: stats.abnormal, color: 'hsl(var(--chart-3))' },
   ];
 
+  const showStats = true;
+  const showDetails = true;
+
   return (
     <div className="p-4 xl:p-6 space-y-6">
       {/* 页面标题 */}
@@ -101,188 +128,209 @@ export default function FireSafetyPage() {
         </div>
 
         <div className="flex flex-col @md:flex-row gap-2">
-          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange.from && dateRange.to ? (
-                  <>
-                    {format(dateRange.from, 'yyyy-MM-dd')} - {format(dateRange.to, 'yyyy-MM-dd')}
-                  </>
-                ) : (
-                  <span>选择日期范围</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                selected={{ from: dateRange.from, to: dateRange.to }}
-                onSelect={(range) => {
-                  if (range?.from && range?.to) {
-                    setDateRange({ from: range.from, to: range.to });
-                    setShowDatePicker(false);
-                  }
-                }}
-                locale={zhCN}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
+          {/* 日期选择器通常关联统计和数据，如果两者都没权限，可能不需要？
+              或者只要有L2权限就显示日期选择器。
+          */}
+          {showStats && (
+            <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.from && dateRange.to ? (
+                    <>
+                      {format(dateRange.from, 'yyyy-MM-dd')} - {format(dateRange.to, 'yyyy-MM-dd')}
+                    </>
+                  ) : (
+                    <span>选择日期范围</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={{ from: dateRange.from, to: dateRange.to }}
+                  onSelect={(range) => {
+                    if (range?.from && range?.to) {
+                      setDateRange({ from: range.from, to: range.to });
+                      setShowDatePicker(false);
+                    }
+                  }}
+                  locale={zhCN}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
 
-          <Button 
-            onClick={handleExport}
-            disabled={equipment.length === 0 || (!profile?.permissions?.canExport && profile?.role !== 'admin')}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            导出数据
-          </Button>
+          {showDetails && (
+            <Button
+              onClick={handleExport}
+              disabled={equipment.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              导出数据
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              设备总数
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total} <span className="text-sm font-normal text-muted-foreground">台</span></div>
-          </CardContent>
-        </Card>
+      {/* 统计视图 */}
+      {!showStats ? (
+        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
+          <div className="text-center">
+            <BarChart2 className="mx-auto h-8 w-8 text-muted-foreground/50" />
+            <p className="mt-2 text-sm text-muted-foreground">您没有权限查看统计数据</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 统计卡片 */}
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  设备总数
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.total} <span className="text-sm font-normal text-muted-foreground">台</span></div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-chart-4" />
-              正常设备
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-chart-4">{stats.normal} <span className="text-sm font-normal text-muted-foreground">台</span></div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-chart-4" />
+                  正常设备
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-chart-4">{stats.normal} <span className="text-sm font-normal text-muted-foreground">台</span></div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              异常设备
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats.abnormal} <span className="text-sm font-normal text-muted-foreground">台</span></div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  异常设备
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">{stats.abnormal} <span className="text-sm font-normal text-muted-foreground">台</span></div>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* 图表 */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+          {/* 图表 */}
+          <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>设备状态分布</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <Skeleton className="h-64 w-full bg-muted" />
+                ) : stats.total > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-muted-foreground">
+                    暂无数据
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>设备正常率</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <Skeleton className="h-64 w-full bg-muted" />
+                ) : (
+                  <div className="h-64 flex flex-col items-center justify-center">
+                    <div className="text-6xl font-bold text-primary">
+                      {stats.total > 0 ? ((stats.normal / stats.total) * 100).toFixed(1) : 0}%
+                    </div>
+                    <p className="text-muted-foreground mt-4">设备正常率</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* 数据表格 - 仅在有详情权限时显示 */}
+      {showDetails && (
         <Card>
           <CardHeader>
-            <CardTitle>设备状态分布</CardTitle>
+            <CardTitle>设备检测记录</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-64 w-full bg-muted" />
-            ) : stats.total > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <Skeleton key={i} className="h-12 w-full bg-muted" />
+                ))}
+              </div>
+            ) : equipment.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>设备编号</TableHead>
+                      <TableHead>检测日期</TableHead>
+                      <TableHead>设备状态</TableHead>
+                      <TableHead>位置</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {equipment.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.equipment_number}</TableCell>
+                        <TableCell>{item.check_date}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={item.status === '正常' || item.status === '0' ? 'default' : 'destructive'}
+                          >
+                            {item.status || '-'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{item.location_name || '-'}</TableCell>
+                      </TableRow>
                     ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground">
                 暂无数据
               </div>
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>设备正常率</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-64 w-full bg-muted" />
-            ) : (
-              <div className="h-64 flex flex-col items-center justify-center">
-                <div className="text-6xl font-bold text-primary">
-                  {stats.total > 0 ? ((stats.normal / stats.total) * 100).toFixed(1) : 0}%
-                </div>
-                <p className="text-muted-foreground mt-4">设备正常率</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 数据表格 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>设备检测记录</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map(i => (
-                <Skeleton key={i} className="h-12 w-full bg-muted" />
-              ))}
-            </div>
-          ) : equipment.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>设备编号</TableHead>
-                    <TableHead>检测日期</TableHead>
-                    <TableHead>设备状态</TableHead>
-                    <TableHead>位置</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {equipment.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.equipment_number}</TableCell>
-                      <TableCell>{item.check_date}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={item.status === '正常' || item.status === '0' ? 'default' : 'destructive'}
-                        >
-                          {item.status || '-'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{item.location_name || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              暂无数据
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      )}
     </div>
   );
 }

@@ -1,3 +1,7 @@
+# 欢迎使用你的秒哒应用代码包
+秒哒应用链接
+    URL:https://www.miaoda.cn/projects/app-8hmwu4kdi3nl
+
 ## 介绍
 
 **消防安全一张表** 是一个基于Web的消防安全数据展示平台，集成车辆管理、人行管理、消防设备、安保数据等多维度安全信息，为学校管理层提供全面的安全态势感知和数据决策支持。
@@ -277,3 +281,127 @@ A: 请确认当前用户是管理员或已被授予导出权限。
 ## 了解更多
 
 您也可以查看帮助文档：[源码导出](https://cloud.baidu.com/doc/MIAODA/s/Xmewgmsq7)，了解更多详细内容。
+
+# 校园安全管理系统
+
+## 项目概述
+这是一个基于Supabase和React/Vite的校园安全管理系统，集成了CAS统一身份认证，支持车辆管理和消防设备监控等功能。
+
+## 功能特性
+
+### CAS统一身份认证
+- 集成学校统一身份认证系统
+- 自动同步用户真实姓名和用户名
+- 解决了显示"普通用户"的问题
+
+### 车辆管理系统
+- 实时监控校园车辆通行记录
+- 按日期范围查询车辆数据
+- 车辆通行统计分析
+
+### 消防设备监控
+- 消防设备状态监控
+- 定期检查记录管理
+- 设备状态统计分析
+
+## 技术架构
+
+### 前端技术栈
+- React 18
+- TypeScript
+- Vite 构建工具
+- Tailwind CSS 样式
+
+### 后端技术栈
+- Supabase (数据库和认证)
+- Supabase Edge Functions (API代理)
+- PostgreSQL 数据库
+
+### 内网API代理
+- 专门的内网代理服务 (Express + TypeScript)
+- 解决内网API访问限制问题
+
+## 部署说明
+
+### 前端部署
+1. 安装依赖: `npm install`
+2. 配置环境变量:
+   ```bash
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_INTERNAL_PROXY_URL=your_internal_proxy_url
+   ```
+3. 构建项目: `npm run build`
+4. 部署到静态服务器
+
+### 内网代理服务部署
+1. 将 `internal-proxy` 目录部署到内网服务器
+2. 确保服务器可以访问 `api.wzbc.edu.cn:8888`
+3. 安装依赖: `npm install`
+4. 编译: `npm run build`
+5. 启动服务: `npm start`
+
+## 环境配置
+
+### 前端环境变量 (.env)
+```bash
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+VITE_INTERNAL_PROXY_URL=your_internal_proxy_url
+```
+
+### 内网代理服务环境变量
+代理服务不需要特殊环境变量，但需要确保网络连通性。
+
+## 问题解决
+
+### CAS登录显示真实用户名
+- 通过修改Supabase触发器函数解决
+- 优先使用CAS返回的真实姓名而非从邮箱提取的用户名
+
+### 登录界面闪烁问题
+- 修复了CAS回调页面的路由守卫逻辑
+- 统一了登录状态显示界面
+
+### 内网API访问问题
+- 设计了专门的内网代理服务解决网络访问限制
+- 通过代理服务获取车辆和消防设备数据
+
+## 目录结构
+
+```
+.
+├── src/                    # 前端源代码
+│   ├── components/         # React组件
+│   ├── pages/              # 页面组件
+│   ├── contexts/           # React上下文
+│   ├── db/                 # 数据库相关
+│   ├── services/           # 服务层
+│   └── types/              # 类型定义
+├── supabase/              # Supabase配置
+│   ├── functions/         # Edge Functions
+│   └── migrations/        # 数据库迁移
+├── internal-proxy/        # 内网代理服务
+│   ├── src/
+│   ├── package.json
+│   └── tsconfig.json
+├── docs/                  # 文档
+└── .env.example           # 环境变量示例
+```
+
+## 维护说明
+
+### 数据库迁移
+- 重要数据库变更通过SQL迁移脚本管理
+- [00002_fix_cas_username_extraction.sql](file:///home/lw/projects/app-8hmwu4kdi3nl/supabase/migrations/00002_fix_cas_username_extraction.sql) - 修复CAS用户名提取
+- [00003_add_name_to_profiles.sql](file:///home/lw/projects/app-8hmwu4kdi3nl/supabase/migrations/00003_add_name_to_profiles.sql) - 添加姓名字段
+
+### API变更
+- 外部API调用通过内网代理服务进行
+- 前端不再直接访问内网API
+
+## 相关文档
+
+- [INTERNAL_API_ACCESS.md](file:///home/lw/projects/app-8hmwu4kdi3nl/INTERNAL_API_ACCESS.md) - 内网API访问解决方案
+- [INTERNAL_PROXY_DEPLOYMENT.md](file:///home/lw/projects/app-8hmwu4kdi3nl/INTERNAL_PROXY_DEPLOYMENT.md) - 内网代理服务部署指南

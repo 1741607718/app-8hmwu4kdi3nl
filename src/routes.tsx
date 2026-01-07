@@ -4,8 +4,8 @@ import PersonnelPage from './pages/PersonnelPage';
 import FireSafetyPage from './pages/FireSafetyPage';
 import SecurityPage from './pages/SecurityPage';
 import DormitoryPage from './pages/DormitoryPage';
-import AdminPermissionsPage from './pages/AdminPermissionsPage';
 import LoginPage from './pages/LoginPage';
+import CASCallbackPage from './pages/CASCallbackPage';
 import type { ReactNode } from 'react';
 
 interface RouteConfig {
@@ -47,14 +47,15 @@ const routes: RouteConfig[] = [
     element: <DormitoryPage />
   },
   {
-    name: '权限管理',
-    path: '/admin/permissions',
-    element: <AdminPermissionsPage />
-  },
-  {
     name: '登录',
     path: '/login',
     element: <LoginPage />,
+    visible: false
+  },
+  {
+    name: 'CAS回调',
+    path: '/auth/callback',
+    element: <CASCallbackPage />,
     visible: false
   }
 ];
