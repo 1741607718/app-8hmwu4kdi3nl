@@ -6,6 +6,7 @@ import SecurityPage from './pages/SecurityPage';
 import DormitoryPage from './pages/DormitoryPage';
 import LoginPage from './pages/LoginPage';
 import CASCallbackPage from './pages/CASCallbackPage';
+import AdminPage from './pages/AdminPage'; // Import AdminPage
 import type { ReactNode } from 'react';
 
 interface RouteConfig {
@@ -57,6 +58,12 @@ const routes: RouteConfig[] = [
     path: '/auth/callback',
     element: <CASCallbackPage />,
     visible: false
+  },
+  {
+    name: '权限管理',
+    path: '/admin',
+    element: <AdminPage />,
+    visible: false // Only visible to admin, handled in layout
   }
 ];
 

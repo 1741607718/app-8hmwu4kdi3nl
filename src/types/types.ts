@@ -9,8 +9,19 @@ export interface Profile {
   email: string | null;
   role: UserRole;
   department: string | null;
+  // 模块权限
+  // 0: 无权限, 1: 查看统计, 2: 查看详情, 3: 全部导出
+  permissions?: {
+    vehicle?: number;
+    personnel?: number;
+    dormitory?: number;
+    fireSafety?: number;
+    security?: number;
+    [key: string]: number | undefined;
+  };
   created_at: string;
   updated_at: string;
+  last_login?: string | null;
 }
 
 // 车辆数据类型
@@ -148,4 +159,90 @@ export interface ChartDataPoint {
   date: string;
   value: number;
   label?: string;
+}
+
+// 监控设备数据类型
+export interface CameraDevice {
+  ID: number;
+  DEVICE_CODE: string;
+  DEVICE_NAME: string;
+  DEVICE_CATEGORY: number;
+  TYPE: string;
+  IS_ONLINE: number;
+  CAPABILITY_COLLECTION: string;
+  OWNER_CODE: string;
+  DEVICE_IP: string;
+  UPDATE_TIME: string;
+  raw_data: Record<string, unknown>;
+}
+
+// 监控统计数据类型
+export interface CameraStats {
+  onlineCount: number;
+  faceRecognitionCount: number;
+  totalCount: number;
+  barrierGateCount: number;
+}
+
+// 校园警情数据类型
+export interface CampusPoliceIncident {
+  id: string;
+  incident_date: string; // 警情发生日期
+  incident_type: string; // 警情类型（如：治安、求助、刑事等）
+  location: string; // 发生地点
+  description: string; // 描述
+  handler: string; // 处理人
+  status: string; // 状态（待处理、处理中、已完成）
+  created_at: string;
+  updated_at: string;
+}
+
+// 校园警情统计数据类型
+export interface CampusPoliceIncidentStats {
+  total: number; // 总数
+  today: number; // 今日
+  thisWeek: number; // 本周
+  thisMonth: number; // 本月
+  thisYear: number; // 本年
+  byType: Record<string, number>; // 按类型统计
+  byDate: Record<string, number>; // 按日期统计
+  byStatus: Record<string, number>; // 按状态统计
+}
+
+// 默认警情类型
+export const DEFAULT_POLICE_INCIDENT_TYPES = [
+  '治安',
+  '求助',
+  '刑事',
+  '交通',
+  '消防',
+  '纠纷',
+  '其他'
+];
+
+// 警情记录数据类型 (biz_jqsb)
+export interface PoliceIncidentRecord {
+  GUID: string;
+  LB: string | null;        // 类别 (如: 校园治安情况, 交通安全巡查, 夜间巡查)
+  RQ: string | null;        // 日期
+  GLDW: string | null;      // 管理单位 (JSON数组)
+  JQFL: string | null;      // 警情分类 (如: 交通, 刑事, 治安, 求助, 其他)
+  SJ: string | null;        // 时间
+  LCQY: string | null;      // 区域
+  FJHCP: string | null;     // 车牌号
+  FJMCCLSYR: string | null; // 当事人 (JSON数组)
+  QKSM: string | null;      // 情况说明 (HTML)
+  JLXZQ: string | null;     // 记录行政区
+}
+
+// 警情统计数据类型
+export interface PoliceIncidentStats {
+  total: number;
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
+  thisYear: number;
+  byType: Record<string, number>;
+  byDate: Record<string, number>;
+  byDepartment: Record<string, number>;
 }

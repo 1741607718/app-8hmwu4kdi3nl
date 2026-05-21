@@ -22,11 +22,18 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3002,  // 修改为3002端口
+    port: 3007,  // 修改为3007端口
     host: '0.0.0.0',  // 允许外部访问
+    strictPort: true,
+    allowedHosts: ['fsif.wzbc.edu.cn', 'localhost', '127.0.0.1'],
     proxy: {
+      '/api/auth': {
+        target: 'http://127.0.0.1:3020',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
-        target: 'http://0.0.0.0:3003',
+        target: 'http://127.0.0.1:3021',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {
@@ -47,8 +54,13 @@ export default defineConfig({
     port: 3002,
     host: '0.0.0.0',
     proxy: {
+      '/api/auth': {
+        target: 'http://127.0.0.1:3020',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
-        target: 'http://0.0.0.0:3003',
+        target: 'http://127.0.0.1:3021',
         changeOrigin: true,
         secure: false,
       }

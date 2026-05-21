@@ -9,102 +9,78 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --radius: 0.5rem;
-    /* 背景色 - 浅灰蓝 */
-    --background: 210 40% 98%;
-    --foreground: 210 20% 15%;
-    /* 卡片 - 纯白 */
+    --radius: 1rem;
+    --background: 220 23% 97%;
+    --foreground: 222 26% 14%;
     --card: 0 0% 100%;
-    --card-foreground: 210 20% 15%;
-    /* 弹出层 */
+    --card-foreground: 222 26% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 20% 15%;
-    /* 主色 - 安全蓝 #1E88E5 -> HSL(207, 77%, 51%) */
-    --primary: 207 77% 51%;
-    --primary-foreground: 0 0% 100%;
-    /* 次要色 - 深蓝 */
-    --secondary: 210 50% 40%;
-    --secondary-foreground: 0 0% 100%;
-    /* 柔和色 */
-    --muted: 210 30% 94%;
-    --muted-foreground: 210 15% 45%;
-    /* 强调色 - 极浅蓝 */
-    --accent: 207 70% 92%;
-    --accent-foreground: 207 77% 35%;
-    /* 危险色 - 危险红 #F44336 -> HSL(4, 90%, 58%) */
-    --destructive: 4 90% 58%;
-    --destructive-foreground: 0 0% 100%;
-    /* 警告色 - 警示橙 #FF9800 -> HSL(36, 100%, 50%) */
-    --warning: 36 100% 50%;
-    --warning-foreground: 0 0% 100%;
-    /* 边框和输入 */
-    --border: 210 25% 88%;
-    --input: 210 25% 88%;
-    --ring: 207 77% 51%;
-    /* 图表色 - 使用安全主题色系 */
-    --chart-1: 207 77% 51%; /* 安全蓝 */
-    --chart-2: 36 100% 50%; /* 警示橙 */
-    --chart-3: 4 90% 58%; /* 危险红 */
-    --chart-4: 142 71% 45%; /* 安全绿 */
-    --chart-5: 280 65% 60%; /* 紫色 */
-    /* 侧边栏 - 深蓝主题 */
-    --sidebar-background: 210 50% 12%;
-    --sidebar-foreground: 210 30% 95%;
-    --sidebar-primary: 207 77% 51%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 45% 18%;
-    --sidebar-accent-foreground: 210 30% 95%;
-    --sidebar-border: 210 40% 20%;
-    --sidebar-ring: 207 77% 51%;
+    --popover-foreground: 222 26% 14%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 220 20% 94%;
+    --muted-foreground: 220 10% 42%;
+    --accent: 214 100% 96%;
+    --accent-foreground: 221 83% 45%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 24 9% 10%;
+    --border: 220 18% 88%;
+    --input: 220 18% 90%;
+    --ring: 221 83% 53%;
+    --chart-1: 221 54% 48%;
+    --chart-2: 219 33% 56%;
+    --chart-3: 217 22% 64%;
+    --chart-4: 215 16% 72%;
+    --chart-5: 213 14% 80%;
+    --sidebar-background: 224 38% 12%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 221 83% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 224 28% 18%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 224 22% 20%;
+    --sidebar-ring: 221 83% 60%;
   }
 
   .dark {
-    /* 背景色 - 深色 */
-    --background: 210 30% 8%;
-    --foreground: 210 30% 95%;
-    /* 卡片 - 深灰蓝 */
-    --card: 210 25% 12%;
-    --card-foreground: 210 30% 95%;
-    /* 弹出层 */
-    --popover: 210 25% 12%;
-    --popover-foreground: 210 30% 95%;
-    /* 主色 - 安全蓝(稍亮) */
-    --primary: 207 77% 55%;
-    --primary-foreground: 0 0% 100%;
-    /* 次要色 */
-    --secondary: 210 40% 25%;
-    --secondary-foreground: 210 30% 95%;
-    /* 柔和色 */
-    --muted: 210 25% 18%;
-    --muted-foreground: 210 20% 65%;
-    /* 强调色 */
-    --accent: 210 30% 20%;
-    --accent-foreground: 207 77% 65%;
-    /* 危险色 */
-    --destructive: 4 85% 50%;
-    --destructive-foreground: 0 0% 100%;
-    /* 警告色 */
-    --warning: 36 95% 48%;
-    --warning-foreground: 0 0% 100%;
-    /* 边框和输入 */
-    --border: 210 25% 22%;
-    --input: 210 25% 22%;
-    --ring: 207 77% 55%;
-    /* 图表色 - 暗色模式调整 */
-    --chart-1: 207 77% 60%;
-    --chart-2: 36 95% 55%;
-    --chart-3: 4 85% 60%;
-    --chart-4: 142 65% 50%;
-    --chart-5: 280 60% 65%;
-    /* 侧边栏 - 更深的蓝 */
-    --sidebar-background: 210 40% 10%;
-    --sidebar-foreground: 210 30% 95%;
-    --sidebar-primary: 207 77% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 35% 16%;
-    --sidebar-accent-foreground: 210 30% 95%;
-    --sidebar-border: 210 30% 18%;
-    --sidebar-ring: 207 77% 55%;
+    --background: 222 28% 8%;
+    --foreground: 210 40% 96%;
+    --card: 222 24% 11%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 24% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 20% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 18% 16%;
+    --muted-foreground: 215 16% 68%;
+    --accent: 217 22% 18%;
+    --accent-foreground: 214 100% 88%;
+    --destructive: 0 72% 54%;
+    --destructive-foreground: 210 40% 98%;
+    --warning: 38 92% 54%;
+    --warning-foreground: 24 9% 10%;
+    --border: 217 18% 20%;
+    --input: 217 18% 20%;
+    --ring: 217 91% 60%;
+    --chart-1: 219 58% 62%;
+    --chart-2: 217 30% 68%;
+    --chart-3: 215 22% 74%;
+    --chart-4: 214 16% 80%;
+    --chart-5: 213 12% 86%;
+    --sidebar-background: 222 32% 10%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 24% 15%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 20% 18%;
+    --sidebar-ring: 217 91% 60%;
   }
 }
 
@@ -113,7 +89,20 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 28%),
+      radial-gradient(circle at top right, hsl(var(--chart-2) / 0.06), transparent 24%),
+      linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
+    background-attachment: fixed;
+  }
+
+  #root {
+    min-height: 100vh;
   }
 }

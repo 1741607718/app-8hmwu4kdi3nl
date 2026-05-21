@@ -1,6 +1,6 @@
 // ...existing code...
 import { Bar } from '@ant-design/charts';
-import { fetchAllVisitorData, fetchAllVehicleRegistrations } from '../../services/externalApi';
+import { fetchAllVisitorData, fetchAllVehicleRegistrations, fetchVehicleRegistrationData } from '../../services/externalApi';
 // ...existing code...
 const VehicleManagement: React.FC = () => {
   // ...existing code...
@@ -49,8 +49,9 @@ const VehicleManagement: React.FC = () => {
     }
 
     try {
-      // 登记记录 - 全量加载
-      const regResult = await fetchAllVehicleRegistrations({pageSize: 1000});
+      // 登记记录 - 全量加载（从数据库）
+      // 使用分页API获取数据，但获取所有数据
+      const regResult = await fetchAllVehicleRegistrations({});
       if (regResult.success && regResult.data) {
         // 存入缓存
         dataCache.registration = regResult.data;
@@ -72,6 +73,15 @@ const VehicleManagement: React.FC = () => {
   useEffect(() => {
     fetchTrafficData(1, 50); // 初始加载第一页
     fetchOtherData();
+
+    // 设置定时刷新，每5分钟刷新一次
+    const intervalId = setInterval(() => {
+      console.log('自动刷新车辆管理数据...');
+      fetchTrafficData(1, 50);
+      fetchOtherData();
+    }, 300000); // 300000ms = 5分钟
+
+    return () => clearInterval(intervalId);
   }, []);
 
   // ...existing code...
@@ -97,12 +107,14 @@ const VehicleManagement: React.FC = () => {
     xField: 'count',
     yField: 'department',
     seriesField: 'department',
+    color: ['#1D4ED8', '#0EA5E9', '#06B6D4', '#14B8A6', '#10B981', '#22C55E', '#6366F1', '#3B82F6', '#059669', '#0F766E'],
     legend: { position: 'top-left' },
     barWidthRatio: 0.8,
     label: {
         position: 'right',
         style: {
-            fill: '#000',
+            fill: '#334155',
+            fontSize: 12,
         },
     },
   };

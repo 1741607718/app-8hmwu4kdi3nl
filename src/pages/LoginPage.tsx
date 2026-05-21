@@ -20,14 +20,22 @@ export default function LoginPage() {
 
   const from = (location.state as { from?: string })?.from || '/';
 
-  // 如果用户已经登录，直接跳转
   useEffect(() => {
     if (user) {
       navigate(from, { replace: true });
+      return;
     }
-  }, [user, navigate, from]);
 
-  const handleCASLogin = async () => {
+    const hasToken = Boolean(localStorage.getItem('token'));
+    const isLoggingOut = sessionStorage.getItem('logging_out') === 'true';
+    const hasCode = new URLSearchParams(location.search).has('code');
+
+    if (!hasToken && !isLoggingOut && !hasCode) {
+      void autoLogin();
+    }
+  }, [user, navigate, from, location.search]);
+
+  const autoLogin = async () => {
     setError('');
     setLoading(true);
     setShowLoading(true);
@@ -42,6 +50,10 @@ export default function LoginPage() {
     }
   };
 
+  const handleCASLogin = async () => {
+    autoLogin();
+  };
+
   // 如果正在加载，显示加载界面
   if (showLoading) {
     return (
@@ -53,8 +65,8 @@ export default function LoginPage() {
                 <Loader2 className="h-10 w-10 text-primary animate-spin" />
               </div>
               <div className="text-center">
-                <h3 className="text-xl font-semibold">正在跳转到统一身份认证...</h3>
-                <p className="text-muted-foreground mt-2">即将跳转到CAS登录页面</p>
+                <h3 className="text-xl font-semibold">准备跳转到统一身份认证...</h3>
+                <p className="text-muted-foreground mt-2">请稍候，正在前往学校CAS登录页面</p>
               </div>
             </div>
           </CardContent>
@@ -100,17 +112,13 @@ export default function LoginPage() {
               ) : (
                 <>
                   <UserRound className="mr-2 h-4 w-4" />
-                  使用CAS统一身份认证登录
+                  点击进入统一身份认证
                 </>
               )}
             </Button>
 
             <div className="text-center text-sm text-muted-foreground mt-4">
-              点击登录即表示您已同意使用学校统一身份认证
-            </div>
-
-            <div className="text-center text-xs text-muted-foreground mt-2">
-              温州商学院信息化办公室提供技术支持
+              点击按钮后将跳转到学校统一身份认证
             </div>
           </div>
         </CardContent>

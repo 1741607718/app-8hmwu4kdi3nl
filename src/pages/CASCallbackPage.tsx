@@ -1,202 +1,177 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { handleCASCallback } from '@/services/casAuth';
-import { supabase } from '@/db/supabase';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+
+function getCookie(name: string): string | null {
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setSessionFlag(name: string, value: string): void {
+  try {
+    sessionStorage.setItem(name, value);
+  } catch {
+    // ignore
+  }
+}
 
 export default function CASCallbackPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { refreshProfile } = useAuth();
+  const processingRef = useRef(false);
+  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
 
   useEffect(() => {
     const handleCASLogin = async () => {
+      if (processingRef.current) {
+        return;
+      }
+      processingRef.current = true;
+
+      const safeNavigate = (path: string) => {
+        window.location.replace(path);
+      };
+
       try {
-        const casData = handleCASCallback();
-        if (!casData) {
-          throw new Error('CAS回调验证失败');
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+
+        const parseApiResponse = async (response: Response) => {
+          const rawText = await response.text();
+
+          try {
+            return JSON.parse(rawText);
+          } catch {
+            const compactText = rawText.replace(/\s+/g, ' ').trim();
+            throw new Error(compactText.slice(0, 240) || `认证服务返回了非 JSON 响应（HTTP ${response.status}）`);
+          }
+        };
+
+        if (!code) {
+          safeNavigate('/login');
+          return;
         }
 
-        // 检查 Supabase 客户端配置
-        console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-        console.log('Supabase Anon Key 存在:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-        
-        // 验证环境变量
-        if (!import.meta.env.VITE_SUPABASE_URL) {
-          throw new Error('环境变量 VITE_SUPABASE_URL 未设置');
+        const lastProcessedCode = sessionStorage.getItem('cas_last_processed_code') || getCookie('cas_last_processed_code');
+        if (code === lastProcessedCode) {
+          safeNavigate('/');
+          return;
         }
-        if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-          throw new Error('环境变量 VITE_SUPABASE_ANON_KEY 未设置');
-        }
-        
-        // 调用Supabase Edge Function来处理CAS token交换
-        console.log('开始调用Supabase函数: cas-exchange-token');
-        console.log('授权码:', casData.code);
-        
-        const response = await supabase.functions.invoke('cas-exchange-token', {
-          body: {
-            code: casData.code,
+
+        setSessionFlag('cas_last_processed_code', code);
+
+        const sessionCheckResponse = await fetch('/api/auth/me', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
           },
         });
 
-        console.log('Supabase函数响应:', response);
-
-        if (response.error) {
-          console.error('Supabase函数调用错误详情:', response.error);
-          console.error('错误名称:', response.error.name);
-          console.error('错误消息:', response.error.message);
-          console.error('错误代码:', (response.error as any).code);
-          throw new Error(response.error.message || '调用Supabase函数失败');
+        let sessionCheck: { success?: boolean; data?: { id?: string } } = { success: false };
+        try {
+          sessionCheck = await parseApiResponse(sessionCheckResponse);
+        } catch {
+          sessionCheck = { success: false };
         }
 
-        const data = response.data;
-        if (!data || !data.success) {
-          throw new Error(data?.error || 'CAS认证失败');
+        if (sessionCheck.success && sessionCheck.data?.id) {
+          safeNavigate('/');
+          return;
         }
 
-        // CAS 认证成功，现在需要完成登录流程
-        const { session, user } = data;
-        
-        console.log('收到服务器响应:', { session, user });
-        
-        // 尝试从 Supabase 生成的 session 中获取登录链接
-        let actionLink = null;
-        
-        // 根据日志，正确的数据结构是 session.properties.action_link
-        if (session && session.properties && session.properties.action_link) {
-          actionLink = session.properties.action_link;
-        } 
-        // 检查其他可能的字段
-        else if (session && session.properties?.email_otp) {
-          console.log('发现 email_otp，尝试使用 OTP 登录');
-          // 使用 OTP 登录
-          const { error } = await supabase.auth.signInWithOtp({
-            email: user.email,
-            options: {
-              emailRedirectTo: window.location.origin,
-            }
-          });
-          
-          if (error) {
-            console.error('OTP 登录失败:', error);
-          } else {
-            console.log('OTP 登录请求已发送');
-          }
+        const postResponse = await fetch('/api/auth/cas/callback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code, state: state || '' }),
+        });
+
+        let data = await parseApiResponse(postResponse);
+
+        if (!data.success && (data.error?.includes('授权码') || data.error?.includes('invalid_request'))) {
+          const params = new URLSearchParams({ code, state: state || '' });
+          const getResponse = await fetch(`/api/auth/cas/callback?${params.toString()}`);
+          data = await parseApiResponse(getResponse);
         }
-        // 检查其他可能的链接字段
-        else if (session?.action_link) {
-          actionLink = session.action_link;
+
+        if (!data.success) {
+          throw new Error(data.error || 'CAS认证失败');
         }
-        else if (session?.url) {
-          actionLink = session.url;
+
+        const token = data.token || data.data?.token;
+        const user = data.user || data.data?.user;
+
+        if (!token || !user?.id) {
+          throw new Error('认证服务未返回有效登录信息');
         }
-        
-        if (actionLink) {
-          console.log('检测到登录链接，跳转到:', actionLink);
-          // 重定向到 magic link 完成登录
-          window.location.href = actionLink;
-          return; // 立即返回，不执行后续导航
-        } else {
-          console.log('未找到action_link，当前会话数据结构:', session);
-          // 如果没有找到 action_link，说明可能Edge Function逻辑有变化
-          // 我们仍然等待认证状态同步
-          toast({
-            title: '处理中',
-            description: '正在处理认证，请稍候...',
-          });
-          
-          // 持续检查认证状态，直到用户被认证或超时
-          const checkAuthStatus = async (maxAttempts = 30) => { // 最多等待30秒
-            for (let i = 0; i < maxAttempts; i++) {
-              // 检查当前URL是否包含认证相关的参数
-              const currentUrl = new URL(window.location.href);
-              const error = currentUrl.searchParams.get('error');
-              
-              if (error) {
-                console.error('URL中包含错误参数:', error);
-                throw new Error(`认证过程中出现错误: ${error}`);
-              }
-              
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session?.user) {
-                console.log('用户已认证，跳转到主页');
-                // 刷新用户配置以确保获取最新信息
-                await refreshProfile();
-                navigate('/');
-                return true; // 成功
-              }
-              
-              // 等待1秒再检查
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-            
-            console.log('等待认证超时');
-            return false; // 超时
-          };
-          
-          // 开始检查认证状态
-          const authenticated = await checkAuthStatus();
-          
-          if (!authenticated) {
-            // 如果超时仍未认证，跳转到登录页
-            toast({
-              title: '认证超时',
-              description: '认证状态同步超时，请重新登录',
-              variant: 'destructive',
-            });
-            setTimeout(() => {
-              navigate('/login');
-            }, 2000);
-          }
-        }
+
+        localStorage.setItem('token', token);
+        localStorage.setItem('userId', user.id);
+
+        setStatus('success');
+        safeNavigate('/');
       } catch (error) {
-        console.error('CAS登录失败:', error);
-        let errorMessage = 'CAS认证失败';
-        
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'string') {
-          errorMessage = error;
-        }
-        
-        // 特别处理网络错误
-        if (errorMessage.includes('net::ERR_NAME_NOT_RESOLVED') || 
-            errorMessage.includes('Failed to send a request to the Edge Function')) {
-          errorMessage = '无法连接到认证服务器，请检查网络连接或联系管理员';
-        }
-        
+        const errorMessage = error instanceof Error ? error.message : 'CAS认证失败';
+        setStatus('error');
         toast({
           title: '登录失败',
-          description: `错误: ${errorMessage}`,
+          description: errorMessage,
           variant: 'destructive',
         });
-        
-        // 添加重试选项或返回登录页
-        setTimeout(() => {
-          navigate('/login');
-        }, 5000); // 5秒后自动跳转回登录页
+        setTimeout(() => navigate('/login'), 5000);
       }
     };
 
-    handleCASLogin();
+    void handleCASLogin();
   }, [navigate, toast]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardContent className="p-8 flex flex-col items-center justify-center space-y-4">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          {status === 'processing' && (
+            <div className="flex flex-col items-center space-y-4">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <Loader2 className="h-10 w-10 text-primary animate-spin" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-semibold">正在处理CAS认证...</h3>
+                <p className="text-muted-foreground mt-2">正在同步您的账户信息</p>
+              </div>
             </div>
-            <div className="text-center">
-              <h3 className="text-xl font-semibold">正在处理CAS认证...</h3>
-              <p className="text-muted-foreground mt-2">正在同步您的账户信息</p>
+          )}
+
+          {status === 'success' && (
+            <div className="flex flex-col items-center space-y-4">
+              <div className="p-3 bg-green-100 rounded-full">
+                <Loader2 className="h-10 w-10 text-green-600 animate-spin" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-semibold">登录成功</h3>
+                <p className="text-muted-foreground mt-2">正在跳转到主页...</p>
+              </div>
             </div>
-          </div>
+          )}
+
+          {status === 'error' && (
+            <div className="flex flex-col items-center space-y-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <Loader2 className="h-10 w-10 text-red-600 animate-spin" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-semibold">登录失败</h3>
+                <p className="text-muted-foreground mt-2">认证过程中出现错误</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
